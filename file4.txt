@@ -1,0 +1,5 @@
+Graphs consist of nodes and edges that connect pairs of nodes.
+They are used to model relationships between entities, such as social networks or city maps.
+Trees are a special type of graph with hierarchical structure and no cycles.
+Binary trees, binary search trees, and AVL trees are common examples.
+Graph traversal algorithms include depth first search and breadth first search.

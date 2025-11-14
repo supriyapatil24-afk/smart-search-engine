@@ -1,0 +1,7 @@
+Data structures are fundamental to computer science. 
+They organize data so that it can be used efficiently. 
+Common types include arrays, linked lists, stacks, queues, trees, and graphs. 
+Each data structure has its own advantages depending on the problem being solved. 
+For example, stacks are used in expression evaluation and function call management.
+Queues are used in scheduling and breadth first search algorithms.
+Trees and graphs are used to represent hierarchical and networked data.

@@ -1,0 +1,5 @@
+Data structures are used in nearly every aspect of computing.
+Stacks and queues manage program execution and background tasks.
+Graphs are used in navigation systems, machine learning models, and recommendation engines.
+Trees are used in compilers, databases, and file systems.
+Efficient use of data structures improves both performance and scalability of software.

@@ -1,0 +1,4 @@
+Algorithm complexity measures the efficiency of an algorithm.
+Big O notation is used to describe the upper bound of time or space complexity.
+For example, binary search has O(log n) complexity while bubble sort has O(n^2).
+Understanding algorithm complexity helps developers choose optimal solutions for large datasets.

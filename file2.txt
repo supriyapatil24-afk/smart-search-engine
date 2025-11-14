@@ -1,0 +1,5 @@
+Sorting algorithms are used to arrange data in a specific order, such as ascending or descending. 
+Popular sorting techniques include bubble sort, merge sort, quick sort, and insertion sort.
+Merge sort and quick sort use the divide and conquer strategy.
+Searching algorithms like linear search and binary search are used to find elements efficiently.
+The choice of algorithm depends on time complexity and the size of the input data.
