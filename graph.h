@@ -12,6 +12,7 @@ struct Edge {
     std::string destination;
     int weight;
     
+    Edge() : destination(""), weight(0) {}  // ADD DEFAULT CONSTRUCTOR
     Edge(const std::string& dest, int w) : destination(dest), weight(w) {}
 };
 
@@ -33,11 +34,9 @@ public:
     std::vector<std::vector<std::string>> findTopicClusters(int minWeight = 2);
     
     // New methods for learning path and mind map
-    std::vector<std::string> getLearningPath(const std::string& startTopic, int maxTopics = 10);
-    void printMindMap(const std::string& startTopic, int maxDepth = 2) const;
-    bool exportMindMapAsDOT(const std::string& startTopic, 
-                           const std::string& filename, 
-                           int maxDepth = 2) const;
+    std::vector<std::string> getLearningPath(const std::string& startTopic, int maxTopics = 8);
+    void displayMindMap(const std::string& startTopic, int maxDepth = 2) const;
+    bool exportMindMap(const std::string& startTopic, const std::string& filename, int maxDepth = 2) const;
 };
 
 #endif

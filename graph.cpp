@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <fstream>
+#include <functional>
 
 void Graph::addEdge(const std::string& topic1, const std::string& topic2) {
     if (topic1 == topic2) return;
@@ -60,10 +61,15 @@ std::vector<std::pair<std::string, int>> Graph::getRelatedTopics(const std::stri
         }
     }
     
+    // Sort by weight and keep top 6
     std::sort(related.begin(), related.end(), 
               [](const std::pair<std::string, int>& a, const std::pair<std::string, int>& b) { 
                   return a.second > b.second; 
               });
+    
+    if (related.size() > 6) {
+        related.resize(6);
+    }
     
     return related;
 }
@@ -127,41 +133,54 @@ std::vector<std::vector<std::string>> Graph::findTopicClusters(int minWeight) {
     return clusters;
 }
 
-// =========== NEW METHODS FOR LEARNING PATH AND MIND MAP ===========
+// =========== NEW IMPROVED METHODS ===========
 
 std::vector<std::string> Graph::getLearningPath(const std::string& startTopic, int maxTopics) {
     std::vector<std::string> learningPath;
-    std::unordered_set<std::string> visited;
     
     if (adjacencyList.find(startTopic) == adjacencyList.end()) {
         return learningPath;
     }
-    
-    std::queue<std::string> q;
-    q.push(startTopic);
-    visited.insert(startTopic);
-    learningPath.push_back(startTopic);
-    
-    while (!q.empty() && learningPath.size() < maxTopics) {
-        std::string current = q.front();
-        q.pop();
+
+    // Use priority queue: prioritize by connection strength and depth
+    struct NodeInfo {
+        std::string topic;
+        int weight;
+        int depth;
         
-        // Get neighbors sorted by weight (highest first)
-        std::vector<Edge> neighbors = adjacencyList[current];
+        bool operator<(const NodeInfo& other) const {
+            if (weight != other.weight) return weight < other.weight; // higher weight first
+            return depth > other.depth; // shallower depth first
+        }
+    };
+
+    std::priority_queue<NodeInfo> pq;
+    std::unordered_set<std::string> visited;
+    
+    pq.push({startTopic, 0, 0});
+    visited.insert(startTopic);
+    
+    while (!pq.empty() && learningPath.size() < maxTopics) {
+        NodeInfo current = pq.top();
+        pq.pop();
+        learningPath.push_back(current.topic);
+        
+        if (learningPath.size() >= maxTopics) break;
+        
+        // Get and sort neighbors by weight
+        std::vector<Edge> neighbors = adjacencyList[current.topic];
         std::sort(neighbors.begin(), neighbors.end(),
                   [](const Edge& a, const Edge& b) {
                       return a.weight > b.weight;
                   });
         
+        // Add top 3 strongest connections to queue
+        int added = 0;
         for (const auto& edge : neighbors) {
-            if (visited.find(edge.destination) == visited.end()) {
+            if (visited.find(edge.destination) == visited.end() && added < 3) {
                 visited.insert(edge.destination);
-                learningPath.push_back(edge.destination);
-                q.push(edge.destination);
-                
-                if (learningPath.size() >= maxTopics) {
-                    break;
-                }
+                pq.push({edge.destination, edge.weight, current.depth + 1});
+                added++;
             }
         }
     }
@@ -169,146 +188,109 @@ std::vector<std::string> Graph::getLearningPath(const std::string& startTopic, i
     return learningPath;
 }
 
-void Graph::printMindMap(const std::string& startTopic, int maxDepth) const {
+void Graph::displayMindMap(const std::string& startTopic, int maxDepth) const {
     if (adjacencyList.find(startTopic) == adjacencyList.end()) {
-        std::cout << "Topic '" << startTopic << "' not found in the graph." << std::endl;
+        std::cout << "Topic not found in knowledge base." << std::endl;
         return;
     }
     
-    std::cout << "\n🧠 Mind Map for: " << startTopic << " (max depth: " << maxDepth << ")" << std::endl;
-    std::cout << std::string(60, '=') << std::endl;
+    std::cout << "\n🧠 Mind Map: " << startTopic << std::endl;
+    std::cout << "═══════════════════════════════════\n";
     
-    std::queue<std::pair<std::string, int>> q;
-    std::unordered_set<std::string> visited;
-    std::unordered_map<std::string, int> depthMap;
-    
-    q.push({startTopic, 0});
-    visited.insert(startTopic);
-    depthMap[startTopic] = 0;
-    
-    while (!q.empty()) {
-        auto [current, depth] = q.front();
-        q.pop();
-        
+    std::function<void(const std::string&, int, std::vector<bool>)> printTree;
+    printTree = [&](const std::string& node, int depth, std::vector<bool> last) {
         // Print current node with indentation
-        if (depth > 0) {
-            for (int i = 0; i < depth; ++i) {
-                std::cout << "  ";
-            }
-            
-            // Determine if this is the last child
-            if (depth == 1) {
-                std::cout << "├─ ";
+        for (int i = 0; i < depth; i++) {
+            if (i == depth - 1) {
+                std::cout << (last[i] ? "└── " : "├── ");
             } else {
-                std::cout << "│  ";
-                for (int i = 1; i < depth; ++i) {
-                    if (i == depth - 1) {
-                        std::cout << "└─ ";
-                    } else {
-                        std::cout << "   ";
-                    }
-                }
+                std::cout << (last[i] ? "    " : "│   ");
             }
         }
         
-        std::cout << current;
-        
-        // Sort neighbors by weight
-        if (adjacencyList.find(current) != adjacencyList.end()) {
-            auto neighbors = adjacencyList.at(current);
-            std::sort(neighbors.begin(), neighbors.end(),
-                      [](const Edge& a, const Edge& b) {
-                          return a.weight > b.weight;
-                      });
-            
-            // Add children to queue if within depth limit
-            if (depth < maxDepth) {
-                int childCount = 0;
-                for (const auto& edge : neighbors) {
-                    if (visited.find(edge.destination) == visited.end()) {
-                        visited.insert(edge.destination);
-                        depthMap[edge.destination] = depth + 1;
-                        q.push({edge.destination, depth + 1});
-                        childCount++;
+        if (depth > 0) {
+            std::cout << node;
+            // Show connection strength for immediate children
+            if (depth == 1 && adjacencyList.find(startTopic) != adjacencyList.end()) {
+                for (const auto& edge : adjacencyList.at(startTopic)) {
+                    if (edge.destination == node) {
+                        std::cout << " [" << edge.weight << "]";
+                        break;
                     }
                 }
-                
-                if (childCount > 0 && depth < maxDepth - 1) {
-                    std::cout << " [" << childCount << " subtopics]";
-                }
             }
+        } else {
+            std::cout << "● " << node;
         }
-        
         std::cout << std::endl;
-    }
+        
+        if (depth >= maxDepth) return;
+        
+        // Get and sort children by weight
+        if (adjacencyList.find(node) != adjacencyList.end()) {
+            auto children = adjacencyList.at(node);
+            std::sort(children.begin(), children.end(),
+                      [](const Edge& a, const Edge& b) { return a.weight > b.weight; });
+            
+            // Limit to top 4 children for readability - FIXED
+            size_t limit = std::min(children.size(), size_t(4));
+            for (size_t i = 0; i < limit; ++i) {
+                last.push_back(i == limit - 1);
+                printTree(children[i].destination, depth + 1, last);
+                last.pop_back();
+            }
+        }
+    };
     
-    std::cout << std::string(60, '-') << std::endl;
+    printTree(startTopic, 0, {});
+    std::cout << "\n● = Main topic, [n] = Connection strength\n";
 }
 
-bool Graph::exportMindMapAsDOT(const std::string& startTopic, 
-                              const std::string& filename, 
-                              int maxDepth) const {
+bool Graph::exportMindMap(const std::string& startTopic, const std::string& filename, int maxDepth) const {
     if (adjacencyList.find(startTopic) == adjacencyList.end()) {
-        std::cerr << "Topic '" << startTopic << "' not found in the graph." << std::endl;
         return false;
     }
     
     std::ofstream dotFile(filename);
-    if (!dotFile.is_open()) {
-        std::cerr << "Error: Could not open file " << filename << " for writing." << std::endl;
-        return false;
-    }
+    if (!dotFile.is_open()) return false;
     
-    // DOT file header
-    dotFile << "digraph MindMap {" << std::endl;
-    dotFile << "  rankdir=TB;" << std::endl;
-    dotFile << "  node [shape=rectangle, style=filled, fillcolor=lightblue];" << std::endl;
-    dotFile << "  edge [fontsize=10];" << std::endl;
-    dotFile << std::endl;
+    dotFile << "digraph MindMap {\n";
+    dotFile << "  rankdir=TB;\n";
+    dotFile << "  node [shape=box, style=filled, fillcolor=lightblue];\n";
+    dotFile << "  edge [penwidth=2];\n\n";
     
-    // Perform BFS to collect nodes and edges
     std::queue<std::pair<std::string, int>> q;
     std::unordered_set<std::string> visited;
     
-    q.push({startTopic, 0});
+    q.push(std::make_pair(startTopic, 0));
     visited.insert(startTopic);
     
     while (!q.empty()) {
-        auto [current, depth] = q.front();
+        auto currentPair = q.front();
+        std::string current = currentPair.first;
+        int depth = currentPair.second;
         q.pop();
         
-        // Export node
-        dotFile << "  \"" << current << "\" [label=\"" << current;
+        dotFile << "  \"" << current << "\" [label=\"" << current << "\"];\n";
         
-        // Add neighbor information if within depth
-        if (adjacencyList.find(current) != adjacencyList.end() && depth < maxDepth) {
+        if (depth < maxDepth && adjacencyList.find(current) != adjacencyList.end()) {
             auto neighbors = adjacencyList.at(current);
             std::sort(neighbors.begin(), neighbors.end(),
-                      [](const Edge& a, const Edge& b) {
-                          return a.weight > b.weight;
-                      });
+                      [](const Edge& a, const Edge& b) { return a.weight > b.weight; });
             
-            // Export edges
             for (const auto& edge : neighbors) {
-                dotFile << "\"];" << std::endl;
                 dotFile << "  \"" << current << "\" -> \"" << edge.destination 
-                       << "\" [label=\"weight: " << edge.weight << "\"];" << std::endl;
+                       << "\" [label=\"" << edge.weight << "\", weight=" << edge.weight << "];\n";
                 
-                if (visited.find(edge.destination) == visited.end() && depth < maxDepth - 1) {
+                if (visited.find(edge.destination) == visited.end()) {
                     visited.insert(edge.destination);
-                    q.push({edge.destination, depth + 1});
+                    q.push(std::make_pair(edge.destination, depth + 1));
                 }
             }
-        } else {
-            dotFile << "\"];" << std::endl;
         }
     }
     
-    dotFile << "}" << std::endl;
+    dotFile << "}\n";
     dotFile.close();
-    
-    std::cout << "✓ DOT file exported to: " << filename << std::endl;
-    std::cout << "  To generate image: dot -Tpng " << filename << " -o mindmap.png" << std::endl;
-    
     return true;
 }

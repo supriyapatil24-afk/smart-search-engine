@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <memory>
 #include <algorithm>
 #include <iomanip>
 #include "trie.h"
@@ -19,7 +18,6 @@ private:
     std::vector<std::string> uploadedFiles;
     DataPersistence dataPersistence;
     
-    void buildTopicRelationships(const std::vector<std::string>& keywords);
     void processKeywords(const std::vector<std::string>& keywords, const std::string& filename);
     void buildGraphFromSentences(const std::string& content);
     
@@ -27,10 +25,7 @@ public:
     SearchEngine() : dataPersistence("search_data.dat") {}
     
     void uploadNote(const std::string& filename);
-    std::vector<std::string> searchWithAutocomplete(const std::string& prefix);
-    std::vector<SearchResult> searchKeyword(const std::string& keyword, int topK = 5);
-    std::vector<std::pair<std::string, int>> getRelatedTopics(const std::string& topic, int maxDepth = 2);
-    void displayEnhancedSearchResults(const std::string& keyword);
+    void searchAndDisplay(const std::string& keyword);
     void displayLearningPath(const std::string& topic);
     void displayMindMap(const std::string& topic);
     void displayMenu();
@@ -38,18 +33,6 @@ public:
     void saveData();
     void loadData();
 };
-
-void SearchEngine::buildTopicRelationships(const std::vector<std::string>& keywords) {
-    for (size_t i = 0; i < keywords.size(); ++i) {
-        topicGraph.addTopic(keywords[i]);
-        
-        for (size_t j = i + 1; j < std::min(i + 4, keywords.size()); ++j) {
-            if (keywords[j].length() > 2) {
-                topicGraph.addEdge(keywords[i], keywords[j]);
-            }
-        }
-    }
-}
 
 void SearchEngine::buildGraphFromSentences(const std::string& content) {
     std::vector<std::string> sentences = Utils::splitIntoSentences(content);
@@ -80,162 +63,119 @@ void SearchEngine::uploadNote(const std::string& filename) {
         std::string content = Utils::readFile(filename);
         std::vector<std::string> keywords = Utils::tokenize(content);
         
-        // Store file content for snippet extraction
         keywordIndex.storeFileContent(filename, content);
-        
         processKeywords(keywords, filename);
         buildGraphFromSentences(content);
         
         uploadedFiles.push_back(filename);
-        std::cout << "\n✅ File processed successfully! Found " << keywords.size() 
-                  << " keywords and built topic relationships." << std::endl;
+        std::cout << "\n[OK] Uploaded: " << filename << std::endl;
+        std::cout << "    Indexed " << keywords.size() << " keywords\n";
                   
     } catch (const std::exception& e) {
-        std::cout << "\n❌ Error: " << e.what() << std::endl;
+        std::cout << "\n[ERROR] " << e.what() << std::endl;
     }
 }
 
-std::vector<std::string> SearchEngine::searchWithAutocomplete(const std::string& prefix) {
-    std::vector<std::string> suggestions = trie.autocomplete(prefix);
-    if (suggestions.size() > 5) {
-        suggestions.resize(5);
-    }
-    return suggestions;
-}
-
-std::vector<SearchResult> SearchEngine::searchKeyword(const std::string& keyword, int topK) {
+void SearchEngine::searchAndDisplay(const std::string& keyword) {
+    // Get search results
     std::vector<FileInfo> files = keywordIndex.getFiles(keyword);
-    Heap resultHeap;
     
-    for (const auto& fileInfo : files) {
-        resultHeap.push(SearchResult(fileInfo.filename, fileInfo.frequency));
-    }
-    
-    return resultHeap.getTopK(topK);
-}
-
-std::vector<std::pair<std::string, int>> SearchEngine::getRelatedTopics(const std::string& topic, int maxDepth) {
-    return topicGraph.getRelatedTopics(topic, maxDepth);
-}
-
-void SearchEngine::displayEnhancedSearchResults(const std::string& keyword) {
-    std::vector<SearchResult> results = searchKeyword(keyword);
-    
-    if (!results.empty()) {
-        std::cout << "\n📊 Top Notes:" << std::endl;
-        std::cout << std::string(40, '=') << std::endl;
-        for (size_t i = 0; i < results.size(); ++i) {
-            std::cout << i + 1 << ". " << results[i].filename 
-                      << " (" << results[i].frequency << " mentions)" << std::endl;
+    if (!files.empty()) {
+        // Sort by frequency
+        std::sort(files.begin(), files.end(), 
+                  [](const FileInfo& a, const FileInfo& b) { 
+                      return a.frequency > b.frequency; 
+                  });
+        
+        std::cout << "\n=== Search Results: " << keyword << " ===\n";
+        
+        // Show top 5 results
+        int limit = std::min(5, (int)files.size());
+        for (int i = 0; i < limit; ++i) {
+            std::cout << i + 1 << ". " << files[i].filename 
+                      << " (" << files[i].frequency << " mentions)\n";
         }
         
-        // Show snippet from the top result
-        if (!results.empty() && keywordIndex.hasFileContent(results[0].filename)) {
-            std::string content = keywordIndex.getFileContent(results[0].filename);
-            std::string snippet = Utils::extractSnippet(content, keyword, 15);
+        // Show snippet from top result
+        if (!files.empty() && keywordIndex.hasFileContent(files[0].filename)) {
+            std::string content = keywordIndex.getFileContent(files[0].filename);
+            std::string snippet = Utils::extractSnippet(content, keyword, 8);
             
-            std::cout << "\n💡 Quick Summary from " << results[0].filename << ":" << std::endl;
-            std::cout << std::string(50, '-') << std::endl;
-            std::cout << snippet << std::endl;
+            std::cout << "\n--- Snippet from " << files[0].filename << " ---\n" 
+                      << snippet << "\n";
         }
         
         // Show related topics
-        std::vector<std::pair<std::string, int>> related = getRelatedTopics(keyword);
+        auto related = topicGraph.getRelatedTopics(keyword);
         if (!related.empty()) {
-            std::cout << "\n🌐 Related Topics (from graph):" << std::endl;
-            std::cout << std::string(40, '-') << std::endl;
-            for (const auto& topic_pair : related) {
-                std::cout << "- " << topic_pair.first << " (weight: " << topic_pair.second << ")" << std::endl;
+            std::cout << "\n--- Related topics ---\n";
+            for (size_t i = 0; i < related.size(); ++i) {
+                std::cout << "- " << related[i].first 
+                          << " (strength: " << related[i].second << ")\n";
             }
         }
         
-        // Show topic clusters
-        std::vector<std::vector<std::string>> clusters = topicGraph.findTopicClusters(2);
-        if (!clusters.empty()) {
-            std::cout << "\n🔗 Main Topic Cluster:" << std::endl;
-            std::cout << std::string(35, '-') << std::endl;
-            for (const auto& cluster : clusters) {
-                if (std::find(cluster.begin(), cluster.end(), keyword) != cluster.end() || 
-                    cluster.size() >= 3) {
-                    std::cout << "• ";
-                    for (size_t i = 0; i < std::min(cluster.size(), size_t(5)); ++i) {
-                        std::cout << cluster[i];
-                        if (i < std::min(cluster.size(), size_t(5)) - 1) std::cout << " → ";
-                    }
-                    if (cluster.size() > 5) std::cout << " ...";
-                    std::cout << std::endl;
-                    break;
-                }
-            }
-        }
     } else {
-        std::cout << "\n❌ No results found for: " << keyword << std::endl;
+        std::cout << "\n[INFO] No results found for: " << keyword << std::endl;
     }
 }
 
 void SearchEngine::displayLearningPath(const std::string& topic) {
     if (!topicGraph.containsTopic(topic)) {
-        std::cout << "\n❌ Topic '" << topic << "' not found in the knowledge graph." << std::endl;
-        std::cout << "   Try uploading notes containing this topic first." << std::endl;
+        std::cout << "\n[INFO] Topic not found. Upload notes first.\n";
         return;
     }
     
-    std::vector<std::string> learningPath = topicGraph.getLearningPath(topic, 12);
+    auto path = topicGraph.getLearningPath(topic, 8);
     
-    if (learningPath.empty()) {
-        std::cout << "\n❌ Could not generate a learning path for '" << topic << "'." << std::endl;
+    if (path.empty() || path.size() < 3) {
+        std::cout << "\n[INFO] Insufficient connections to build learning path.\n";
         return;
     }
     
-    std::cout << "\n📚 Suggested Learning Path starting from: " << topic << std::endl;
-    std::cout << std::string(60, '=') << std::endl;
+    std::cout << "\n=== Learning Path: " << topic << " ===\n";
     
-    for (size_t i = 0; i < learningPath.size(); ++i) {
-        std::cout << std::setw(3) << (i + 1) << ". " << learningPath[i] << std::endl;
+    for (size_t i = 0; i < path.size(); ++i) {
+        std::cout << " " << i + 1 << ". " << path[i] << "\n";
     }
     
-    std::cout << std::string(60, '-') << std::endl;
-    std::cout << "💡 This path is based on topic co-occurrence in your notes." << std::endl;
-    std::cout << "   Topics are ordered by their semantic connections (strongest first)." << std::endl;
+    std::cout << "\n[INFO] Suggested study order based on topic relationships\n";
 }
 
 void SearchEngine::displayMindMap(const std::string& topic) {
     if (!topicGraph.containsTopic(topic)) {
-        std::cout << "\n❌ Topic '" << topic << "' not found in the knowledge graph." << std::endl;
-        std::cout << "   Try uploading notes containing this topic first." << std::endl;
+        std::cout << "\n[INFO] Topic not found. Upload notes first.\n";
         return;
     }
     
-    // Display ASCII mind map in console
-    topicGraph.printMindMap(topic, 3);
+    std::cout << "\n=== Mind Map: " << topic << " ===\n";
     
-    // Ask user if they want to export as DOT file
-    std::cout << "\n💾 Would you like to export this mind map as a DOT file for visualization? (y/n): ";
-    char choice;
-    std::cin >> choice;
-    std::cin.ignore();
+    // Simple indented display
+    auto related = topicGraph.getRelatedTopics(topic, 1);
     
-    if (choice == 'y' || choice == 'Y') {
-        std::string filename = "mindmap_" + topic + ".dot";
-        if (topicGraph.exportMindMapAsDOT(topic, filename, 3)) {
-            std::cout << "\n✅ Mind map exported to: " << filename << std::endl;
-            std::cout << "   To generate an image, run: dot -Tpng " << filename << " -o " << topic << "_mindmap.png" << std::endl;
-        }
+    if (related.empty()) {
+        std::cout << topic << "\n";
+        std::cout << "  (no strong connections found)\n";
+        return;
+    }
+    
+    std::cout << topic << "\n";
+    for (const auto& rel : related) {
+        std::cout << "  |- " << rel.first << " [weight: " << rel.second << "]\n";
     }
 }
 
 void SearchEngine::displayMenu() {
-    std::cout << "\n" << std::string(60, '=') << std::endl;
-    std::cout << "           SMART SEARCH ENGINE FOR COLLEGE NOTES" << std::endl;
-    std::cout << std::string(60, '=') << std::endl;
-    std::cout << "1. 📁 Upload new note" << std::endl;
-    std::cout << "2. 🔍 Search a topic" << std::endl;
-    std::cout << "3. 🌐 View related topics" << std::endl;
-    std::cout << "4. 📚 Generate learning path for a topic" << std::endl;
-    std::cout << "5. 🧠 View mind map for a topic" << std::endl;
-    std::cout << "6. 💾 Save and Exit" << std::endl;
-    std::cout << std::string(60, '-') << std::endl;
-    std::cout << "Enter your choice (1-6): ";
+    std::cout << "\n=====================================\n";
+    std::cout << "    SMART SEARCH ENGINE v2.0\n";
+    std::cout << "=====================================\n";
+    std::cout << "1. Upload note\n";
+    std::cout << "2. Search topic\n";
+    std::cout << "3. Generate learning path\n";
+    std::cout << "4. View mind map\n";
+    std::cout << "5. Save & Exit\n";
+    std::cout << "=====================================\n";
+    std::cout << "Choice: ";
 }
 
 void SearchEngine::saveData() {
@@ -244,7 +184,7 @@ void SearchEngine::saveData() {
 
 void SearchEngine::loadData() {
     if (!dataPersistence.loadData(trie, topicGraph, keywordIndex)) {
-        std::cout << "No previous data found. Starting fresh..." << std::endl;
+        std::cout << "No saved data found.\n";
     }
 }
 
@@ -254,8 +194,8 @@ void SearchEngine::run() {
     int choice;
     std::string input;
     
-    std::cout << "\n🎯 Welcome to Smart Search Engine for College Notes!" << std::endl;
-    std::cout << "   Enhanced features: Text snippets, Topic clustering, Smart ranking\n" << std::endl;
+    std::cout << "\nSMART SEARCH ENGINE FOR COLLEGE NOTES\n";
+    std::cout << "=======================================\n";
     
     while (true) {
         displayMenu();
@@ -264,75 +204,40 @@ void SearchEngine::run() {
         
         switch (choice) {
             case 1: {
-                std::cout << "\n📁 Enter file path: ";
+                std::cout << "\nFile path: ";
                 std::getline(std::cin, input);
                 uploadNote(input);
                 break;
             }
             case 2: {
-                std::cout << "\n🔍 Enter search keyword: ";
+                std::cout << "\nSearch: ";
                 std::getline(std::cin, input);
-                
-                if (input.empty()) {
-                    std::cout << "❌ Please enter a valid keyword." << std::endl;
-                    break;
+                if (!input.empty()) {
+                    searchAndDisplay(input);
                 }
-                
-                // Autocomplete suggestions
-                std::vector<std::string> suggestions = searchWithAutocomplete(input);
-                if (!suggestions.empty()) {
-                    std::cout << "\n💡 Autocomplete suggestions: ";
-                    for (size_t i = 0; i < suggestions.size(); ++i) {
-                        std::cout << suggestions[i];
-                        if (i < suggestions.size() - 1) std::cout << ", ";
-                    }
-                    std::cout << std::endl;
-                }
-                
-                std::cout << "🎯 You selected: " << input << std::endl;
-                
-                // Enhanced search results with snippets and clustering
-                displayEnhancedSearchResults(input);
                 break;
             }
             case 3: {
-                std::cout << "\n🌐 Enter topic to explore: ";
-                std::getline(std::cin, input);
-                
-                std::vector<std::pair<std::string, int>> related = getRelatedTopics(input, 3);
-                if (!related.empty()) {
-                    std::cout << "\n🔗 Related Topics for '" << input << "' (BFS depth: 3):" << std::endl;
-                    std::cout << std::string(50, '-') << std::endl;
-                    for (const auto& topic_pair : related) {
-                        std::cout << "  ↳ " << topic_pair.first << " [connection strength: " << topic_pair.second << "]" << std::endl;
-                    }
-                } else {
-                    std::cout << "\n❌ No related topics found for: " << input << std::endl;
-                    std::cout << "   Try uploading notes containing this topic first." << std::endl;
-                }
-                break;
-            }
-            case 4: {
-                std::cout << "\n📚 Enter topic for learning path: ";
+                std::cout << "\nStart topic: ";
                 std::getline(std::cin, input);
                 displayLearningPath(input);
                 break;
             }
-            case 5: {
-                std::cout << "\n🧠 Enter topic for mind map: ";
+            case 4: {
+                std::cout << "\nCenter topic: ";
                 std::getline(std::cin, input);
                 displayMindMap(input);
                 break;
             }
-            case 6:
-                std::cout << "\n💾 Saving data...";
+            case 5:
+                std::cout << "\nSaving data...\n";
                 saveData();
-                std::cout << "\n🎉 Thank you for using Smart Search Engine!" << std::endl;
-                std::cout << "   Your data has been saved and will be available next time." << std::endl;
+                std::cout << "Goodbye!\n";
                 return;
             default:
-                std::cout << "\n❌ Invalid choice. Please enter 1-6." << std::endl;
+                std::cout << "\n[ERROR] Invalid choice. Please enter 1-5.\n";
         }
+        std::cout << std::endl;
     }
 }
 
