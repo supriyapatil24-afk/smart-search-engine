@@ -17,14 +17,20 @@ private:
     HashMap keywordIndex;
     std::vector<std::string> uploadedFiles;
     DataPersistence dataPersistence;
-    
+
     void processKeywords(const std::vector<std::string>& keywords, const std::string& filename);
     void buildGraphFromSentences(const std::string& content);
-    
+
 public:
     SearchEngine() : dataPersistence("search_data.dat") {}
-    
+
     void uploadNote(const std::string& filename);
+    void uploadFile(const std::string& filename, const std::string& content);
+    std::vector<FileInfo> search(const std::string& keyword);
+    std::vector<std::pair<std::string, int>> getRelatedTopics(const std::string& topic);
+    std::vector<std::string> getLearningPath(const std::string& topic);
+    std::string getSnippet(const std::string& filename, const std::string& keyword);
+    std::vector<std::string> getUploadedFiles();
     void searchAndDisplay(const std::string& keyword);
     void displayLearningPath(const std::string& topic);
     void displayMindMap(const std::string& topic);
@@ -62,18 +68,72 @@ void SearchEngine::uploadNote(const std::string& filename) {
     try {
         std::string content = Utils::readFile(filename);
         std::vector<std::string> keywords = Utils::tokenize(content);
-        
+
         keywordIndex.storeFileContent(filename, content);
         processKeywords(keywords, filename);
         buildGraphFromSentences(content);
-        
+
         uploadedFiles.push_back(filename);
         std::cout << "\n[OK] Uploaded: " << filename << std::endl;
         std::cout << "    Indexed " << keywords.size() << " keywords\n";
-                  
+
     } catch (const std::exception& e) {
         std::cout << "\n[ERROR] " << e.what() << std::endl;
     }
+}
+
+void SearchEngine::uploadFile(const std::string& filename, const std::string& content) {
+    try {
+        std::vector<std::string> keywords = Utils::tokenize(content);
+
+        keywordIndex.storeFileContent(filename, content);
+        processKeywords(keywords, filename);
+        buildGraphFromSentences(content);
+
+        uploadedFiles.push_back(filename);
+        std::cout << "\n[OK] Uploaded: " << filename << std::endl;
+        std::cout << "    Indexed " << keywords.size() << " keywords\n";
+
+    } catch (const std::exception& e) {
+        std::cout << "\n[ERROR] " << e.what() << std::endl;
+    }
+}
+
+std::vector<FileInfo> SearchEngine::search(const std::string& keyword) {
+    std::vector<FileInfo> files = keywordIndex.getFiles(keyword);
+
+    // Sort by frequency
+    std::sort(files.begin(), files.end(),
+              [](const FileInfo& a, const FileInfo& b) {
+                  return a.frequency > b.frequency;
+              });
+
+    return files;
+}
+
+std::vector<std::pair<std::string, int>> SearchEngine::getRelatedTopics(const std::string& topic) {
+    return topicGraph.getRelatedTopics(topic);
+}
+
+std::vector<std::string> SearchEngine::getLearningPath(const std::string& topic) {
+    if (!topicGraph.containsTopic(topic)) {
+        return {};
+    }
+
+    return topicGraph.getLearningPath(topic, 8);
+}
+
+std::string SearchEngine::getSnippet(const std::string& filename, const std::string& keyword) {
+    if (!keywordIndex.hasFileContent(filename)) {
+        return "File content not available";
+    }
+
+    std::string content = keywordIndex.getFileContent(filename);
+    return Utils::extractSnippet(content, keyword, 8);
+}
+
+std::vector<std::string> SearchEngine::getUploadedFiles() {
+    return uploadedFiles;
 }
 
 void SearchEngine::searchAndDisplay(const std::string& keyword) {

@@ -3,12 +3,24 @@ project(SmartSearchEngine)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(search_engine 
-    main.cpp 
-    trie.cpp 
-    graph.cpp 
-    hashmap.cpp 
-    heap.cpp 
+add_executable(search_engine
+    main.cpp
+    trie.cpp
+    graph.cpp
+    hashmap.cpp
+    heap.cpp
     utils.cpp
     datapersistence.cpp
+    searchengine.cpp
+)
+
+add_executable(server
+    server.cpp
+    trie.cpp
+    graph.cpp
+    hashmap.cpp
+    heap.cpp
+    utils.cpp
+    datapersistence.cpp
+    searchengine.cpp
 )

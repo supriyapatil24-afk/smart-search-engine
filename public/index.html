@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎓 Smart Search Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="logo">
+          <i class="fas fa-graduation-cap"></i>
+          <span>Smart Search Engine</span>
+        </div>
+        <ul class="nav-menu">
+          <li>
+            <a href="#" class="nav-link active" data-page="search"
+              ><i class="fas fa-search"></i> Search</a
+            >
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-page="upload"
+              ><i class="fas fa-upload"></i> Upload</a
+            >
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-page="learning"
+              ><i class="fas fa-road"></i> Learning Path</a
+            >
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-page="mindmap"
+              ><i class="fas fa-project-diagram"></i> Mind Map</a
+            >
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+      <!-- Search Page (Default) -->
+      <section id="search-page" class="page active">
+        <div class="hero">
+          <h1><i class="fas fa-search"></i> Search College Notes</h1>
+          <p class="subtitle">
+            Find topics across your uploaded notes with smart ranking and
+            related concepts
+          </p>
+
+          <div class="search-container">
+            <div class="search-box">
+              <input
+                type="text"
+                id="search-input"
+                placeholder="Enter topic to search (e.g., Data Structures, Algorithms)..."
+              />
+              <button id="search-btn" class="btn-primary">
+                <i class="fas fa-search"></i> Search
+              </button>
+            </div>
+            <div id="suggestions" class="suggestions"></div>
+          </div>
+        </div>
+
+        <div class="results-container">
+          <div class="results-main">
+            <h2 id="results-title" class="hidden">Search Results</h2>
+            <div id="search-results" class="results-grid"></div>
+          </div>
+
+          <div class="results-sidebar">
+            <div class="sidebar-card">
+              <h3><i class="fas fa-link"></i> Related Topics</h3>
+              <div id="related-topics" class="topics-list"></div>
+            </div>
+
+            <div class="sidebar-card">
+              <h3><i class="fas fa-chart-bar"></i> Quick Stats</h3>
+              <div id="stats" class="stats">
+                <p>
+                  <i class="fas fa-file-alt"></i>
+                  <span id="total-files">0</span> notes uploaded
+                </p>
+                <p>
+                  <i class="fas fa-key"></i>
+                  <span id="total-keywords">0</span> keywords indexed
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upload Page -->
+      <section id="upload-page" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-upload"></i> Upload Notes</h1>
+          <p>
+            Upload your college notes (.txt files) to build the search index and
+            topic graph
+          </p>
+        </div>
+
+        <div class="upload-container">
+          <div class="upload-card">
+            <div class="upload-area" id="drop-area">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <h3>Drag & Drop Files Here</h3>
+              <p>or click to browse</p>
+              <input type="file" id="file-input" accept=".txt,.md,.pdf" />
+              <p class="file-types">Supported: .txt, .md, .pdf</p>
+            </div>
+
+            <div class="upload-info">
+              <h4><i class="fas fa-info-circle"></i> Upload Tips</h4>
+              <ul>
+                <li>Upload lecture notes, summaries, or study materials</li>
+                <li>Each file is processed for keywords and relationships</li>
+                <li>System builds topic connections automatically</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="progress-container hidden" id="progress-container">
+            <h3><i class="fas fa-spinner fa-spin"></i> Processing File</h3>
+            <div class="progress-bar">
+              <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <p id="progress-text">0%</p>
+          </div>
+
+          <div class="uploaded-files">
+            <h3><i class="fas fa-file-alt"></i> Uploaded Files</h3>
+            <div id="files-list" class="files-list">
+              <!-- Files will appear here -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Learning Path Page -->
+      <section id="learning-page" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-road"></i> Learning Path Generator</h1>
+          <p>
+            Enter a topic to get a suggested learning sequence based on topic
+            relationships
+          </p>
+        </div>
+
+        <div class="learning-container">
+          <div class="path-input">
+            <input
+              type="text"
+              id="topic-input"
+              placeholder="Enter topic (e.g., Operating Systems, Machine Learning)"
+            />
+            <button id="generate-path-btn" class="btn-primary">
+              <i class="fas fa-route"></i> Generate Learning Path
+            </button>
+          </div>
+
+          <div id="path-container" class="hidden">
+            <h2 class="path-title"></h2>
+
+            <div class="path-steps">
+              <!-- Steps will be added here -->
+            </div>
+
+            <div class="path-tips">
+              <h4><i class="fas fa-lightbulb"></i> Study Tips</h4>
+              <p>
+                Follow this sequence for optimal learning. Each topic builds
+                upon previous knowledge.
+              </p>
+            </div>
+          </div>
+
+          <div id="no-path" class="hidden">
+            <div class="empty-state">
+              <i class="fas fa-book-open"></i>
+              <h3>No Learning Path Generated</h3>
+              <p>
+                Enter a topic above to generate a personalized learning sequence
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mind Map Page -->
+      <section id="mindmap-page" class="page">
+        <div class="page-header">
+          <h1><i class="fas fa-project-diagram"></i> Topic Mind Map</h1>
+          <p>Visualize how topics are connected in your knowledge graph</p>
+        </div>
+
+        <div class="mindmap-container">
+          <div class="mindmap-controls">
+            <div class="control-group">
+              <input
+                type="text"
+                id="mindmap-topic"
+                placeholder="Enter central topic"
+              />
+              <div class="depth-control">
+                <label>Depth: <span id="depth-value">2</span></label>
+                <input
+                  type="range"
+                  id="depth-slider"
+                  min="1"
+                  max="4"
+                  value="2"
+                />
+              </div>
+              <button id="generate-mindmap-btn" class="btn-primary">
+                <i class="fas fa-project-diagram"></i> Generate Map
+              </button>
+            </div>
+          </div>
+
+          <div class="mindmap-content">
+            <div class="canvas-container">
+              <canvas id="mindmap-canvas" width="800" height="600"></canvas>
+              <div id="no-mindmap" class="empty-state">
+                <i class="fas fa-project-diagram"></i>
+                <h3>No Mind Map Generated</h3>
+                <p>Enter a topic above to visualize its connections</p>
+              </div>
+            </div>
+
+            <div class="connections-panel">
+              <h3><i class="fas fa-link"></i> Connection Analysis</h3>
+              <div id="connections-info"></div>
+              <div id="connections-list" class="connections-list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>🎓 Smart Search Engine for College Notes | Built with C++ Backend</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="script.js"></script>
+  </body>
+</html>
