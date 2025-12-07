@@ -3,11 +3,10 @@
 
 #include <string>
 #include <unordered_map>
-#include <unordered_set>  // ADD THIS
+#include <unordered_set>
 #include <vector>
 #include <queue>
 #include <utility>
-// REMOVE: #include <set>  (not needed)
 
 struct Edge {
     std::string destination;
@@ -32,6 +31,13 @@ public:
     void setAdjacencyList(const std::unordered_map<std::string, std::vector<Edge>>& newList);
     std::vector<std::string> getAllTopics() const;
     std::vector<std::vector<std::string>> findTopicClusters(int minWeight = 2);
+    
+    // New methods for learning path and mind map
+    std::vector<std::string> getLearningPath(const std::string& startTopic, int maxTopics = 10);
+    void printMindMap(const std::string& startTopic, int maxDepth = 2) const;
+    bool exportMindMapAsDOT(const std::string& startTopic, 
+                           const std::string& filename, 
+                           int maxDepth = 2) const;
 };
 
 #endif

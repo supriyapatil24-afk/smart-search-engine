@@ -31,6 +31,8 @@ public:
     std::vector<SearchResult> searchKeyword(const std::string& keyword, int topK = 5);
     std::vector<std::pair<std::string, int>> getRelatedTopics(const std::string& topic, int maxDepth = 2);
     void displayEnhancedSearchResults(const std::string& keyword);
+    void displayLearningPath(const std::string& topic);
+    void displayMindMap(const std::string& topic);
     void displayMenu();
     void run();
     void saveData();
@@ -152,10 +154,9 @@ void SearchEngine::displayEnhancedSearchResults(const std::string& keyword) {
         if (!clusters.empty()) {
             std::cout << "\n🔗 Main Topic Cluster:" << std::endl;
             std::cout << std::string(35, '-') << std::endl;
-            // Find cluster containing the search keyword
             for (const auto& cluster : clusters) {
                 if (std::find(cluster.begin(), cluster.end(), keyword) != cluster.end() || 
-                    cluster.size() >= 3) { // Show any substantial cluster
+                    cluster.size() >= 3) {
                     std::cout << "• ";
                     for (size_t i = 0; i < std::min(cluster.size(), size_t(5)); ++i) {
                         std::cout << cluster[i];
@@ -172,6 +173,57 @@ void SearchEngine::displayEnhancedSearchResults(const std::string& keyword) {
     }
 }
 
+void SearchEngine::displayLearningPath(const std::string& topic) {
+    if (!topicGraph.containsTopic(topic)) {
+        std::cout << "\n❌ Topic '" << topic << "' not found in the knowledge graph." << std::endl;
+        std::cout << "   Try uploading notes containing this topic first." << std::endl;
+        return;
+    }
+    
+    std::vector<std::string> learningPath = topicGraph.getLearningPath(topic, 12);
+    
+    if (learningPath.empty()) {
+        std::cout << "\n❌ Could not generate a learning path for '" << topic << "'." << std::endl;
+        return;
+    }
+    
+    std::cout << "\n📚 Suggested Learning Path starting from: " << topic << std::endl;
+    std::cout << std::string(60, '=') << std::endl;
+    
+    for (size_t i = 0; i < learningPath.size(); ++i) {
+        std::cout << std::setw(3) << (i + 1) << ". " << learningPath[i] << std::endl;
+    }
+    
+    std::cout << std::string(60, '-') << std::endl;
+    std::cout << "💡 This path is based on topic co-occurrence in your notes." << std::endl;
+    std::cout << "   Topics are ordered by their semantic connections (strongest first)." << std::endl;
+}
+
+void SearchEngine::displayMindMap(const std::string& topic) {
+    if (!topicGraph.containsTopic(topic)) {
+        std::cout << "\n❌ Topic '" << topic << "' not found in the knowledge graph." << std::endl;
+        std::cout << "   Try uploading notes containing this topic first." << std::endl;
+        return;
+    }
+    
+    // Display ASCII mind map in console
+    topicGraph.printMindMap(topic, 3);
+    
+    // Ask user if they want to export as DOT file
+    std::cout << "\n💾 Would you like to export this mind map as a DOT file for visualization? (y/n): ";
+    char choice;
+    std::cin >> choice;
+    std::cin.ignore();
+    
+    if (choice == 'y' || choice == 'Y') {
+        std::string filename = "mindmap_" + topic + ".dot";
+        if (topicGraph.exportMindMapAsDOT(topic, filename, 3)) {
+            std::cout << "\n✅ Mind map exported to: " << filename << std::endl;
+            std::cout << "   To generate an image, run: dot -Tpng " << filename << " -o " << topic << "_mindmap.png" << std::endl;
+        }
+    }
+}
+
 void SearchEngine::displayMenu() {
     std::cout << "\n" << std::string(60, '=') << std::endl;
     std::cout << "           SMART SEARCH ENGINE FOR COLLEGE NOTES" << std::endl;
@@ -179,9 +231,11 @@ void SearchEngine::displayMenu() {
     std::cout << "1. 📁 Upload new note" << std::endl;
     std::cout << "2. 🔍 Search a topic" << std::endl;
     std::cout << "3. 🌐 View related topics" << std::endl;
-    std::cout << "4. 💾 Save and Exit" << std::endl;
+    std::cout << "4. 📚 Generate learning path for a topic" << std::endl;
+    std::cout << "5. 🧠 View mind map for a topic" << std::endl;
+    std::cout << "6. 💾 Save and Exit" << std::endl;
     std::cout << std::string(60, '-') << std::endl;
-    std::cout << "Enter your choice (1-4): ";
+    std::cout << "Enter your choice (1-6): ";
 }
 
 void SearchEngine::saveData() {
@@ -258,14 +312,26 @@ void SearchEngine::run() {
                 }
                 break;
             }
-            case 4:
+            case 4: {
+                std::cout << "\n📚 Enter topic for learning path: ";
+                std::getline(std::cin, input);
+                displayLearningPath(input);
+                break;
+            }
+            case 5: {
+                std::cout << "\n🧠 Enter topic for mind map: ";
+                std::getline(std::cin, input);
+                displayMindMap(input);
+                break;
+            }
+            case 6:
                 std::cout << "\n💾 Saving data...";
                 saveData();
                 std::cout << "\n🎉 Thank you for using Smart Search Engine!" << std::endl;
                 std::cout << "   Your data has been saved and will be available next time." << std::endl;
                 return;
             default:
-                std::cout << "\n❌ Invalid choice. Please enter 1-4." << std::endl;
+                std::cout << "\n❌ Invalid choice. Please enter 1-6." << std::endl;
         }
     }
 }
